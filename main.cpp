@@ -150,6 +150,12 @@ class PhysicsObject : public Object {
 			vel+=F*delta/mass;
 		}
 		void WallCol(){
+			if(pos.x + dimensions.x/2>800 || pos.x -dimensions.x/2 <0){
+				vel.x = -vel.x/2;
+			}
+			if(pos.y -dimensions.y/2 <50){
+				vel.y = -vel.y/2;
+			}
 		}
 		void Move(){
 			float res(400);
