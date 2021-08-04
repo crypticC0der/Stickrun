@@ -20,11 +20,10 @@ enum Color{
 };
 enum Shape{
 	Square,
-	Equalateral,
 	Rectangle,
-	Isocolies,
 	RightAngle
 };
+bool Left_H,Right_H;
 
 class Vector{
 	public:
@@ -96,27 +95,11 @@ class Matrix2{
 		}
 };
 
-float* GetTPoints(float x,float y,float t){
-	//t is short for theata = angle
-	//returns pointer to 8 floats representing angles
-	float s{sin(t)}, c{cos(t)}; //saving sin and cos
-	float* ret = new float[8];
-	ret[0] = c*x-y*s;
-	ret[1] = s*x+y*c;
-	ret[2] = c*x+y*s;
-	ret[3] = s*x-y*c;
-	ret[4] = -c*x+y*s;
-	ret[5] = -s*x-y*c;
-	ret[6] = -c*x-y*s;
-	ret[7] = -s*x+y*c;
-	return ret;
-}
 
 class Object{
 	public:
 		Vector pos;
 		Shape shape;
-		float angle;
 		Vector dimensions;
 		int c;
 
@@ -125,7 +108,6 @@ class Object{
 			pos = p;
 			dimensions=d;
 			shape=s;
-			angle=ang;
 		}
 
 		void draw(){
@@ -136,15 +118,14 @@ class Object{
 					glBegin(GL_QUADS);
 					Vector actD = dimensions/(float)200;
 					actD.x = (actD.x/2);
+					actD/=2;
 					Vector actPos = pos/(float)200;
 					actPos.x = (actPos.x/2) -1;
 					actPos.y -=1;
-					float* d = GetTPoints(actD.x/2,actD.y/2,angle);
-					glVertex2d(actPos.x+d[0],actPos.y+d[1]);
-					glVertex2d(actPos.x+d[2],actPos.y+d[3]);
-					glVertex2d(actPos.x+d[4],actPos.y+d[5]);
-					glVertex2d(actPos.x+d[6],actPos.y+d[7]);
-					free(d);
+					glVertex2d(actPos.x+actD.x,actPos.y+actD.y);
+					glVertex2d(actPos.x+actD.x,actPos.y-actD.y);
+					glVertex2d(actPos.x-actD.x,actPos.y-actD.y);
+					glVertex2d(actPos.x-actD.x,actPos.y+actD.y);
 					break;
 				}
 				default: {
@@ -168,7 +149,22 @@ class PhysicsObject : public Object {
 		void ApplyForce(Vector F){
 			vel+=F*delta/mass;
 		}
+		void WallCol(){
+		}
 		void Move(){
+			float res(400);
+			if(vel.x>0.2){
+				res*=-1;
+			}else if(vel.x>-0.2){
+				res=0;
+			}
+			vel.x += res*delta;
+			if(vel.x<-300){
+				vel.x=-300;
+			}
+			if(vel.x>300){
+				vel.x=300;
+			}
 			pos+=vel*delta;
 		}
 };
@@ -188,6 +184,7 @@ Player player(Vector(200,150),Rectangle,0,Vector(50,100), Red,64);
 void DrawScene(){
 	glColor3f(0,0,0);
 	glBegin(GL_LINES);
+
 	glVertex2d(-1,-.5);
 	glVertex2d(1,-.5);
 	glEnd();
@@ -196,48 +193,74 @@ void DrawScene(){
 
 void disInit(){
 	glClearColor(1, 1, 1, 1); // Set background color to black and opaque
+	cout << "lol" <<endl;
 	glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer
 	DrawScene();
 	glFlush();
 }
 
 //supports special keys
-void keyboard(int key, int _x, int _y)
+void keyboardUp(int key, int _x, int _y)
 {
-	Vector v(0,0);
 	switch (key){
 		case GLUT_KEY_DOWN:
-			v.y=-1;
+			//handle
 			break;
 		case GLUT_KEY_UP:
-			v.y=1;
+			//handle
 			break;
 		case GLUT_KEY_LEFT:
-			v.x=-1;
+			Left_H=false;
 			break;
 		case GLUT_KEY_RIGHT:
-			v.x=1;
+			Right_H=false;
 			break;
 		default:
 			cout << "key: " << int(key) <<endl;
 			break;
 		}
-	player.ApplyAcc(v*1600);
+}
+void keyboard(int key, int _x, int _y)
+{
+	switch (key){
+		case GLUT_KEY_DOWN:
+			//handle
+			break;
+		case GLUT_KEY_UP:
+			//handle
+			break;
+		case GLUT_KEY_LEFT:
+			Left_H=true;
+			break;
+		case GLUT_KEY_RIGHT:
+			Right_H=true;
+			break;
+		default:
+			cout << "key: " << int(key) <<endl;
+			break;
+		}
 }
 
 high_resolution_clock::time_point lastTime;
 void run(){
 	duration<double> duration = high_resolution_clock::now() - lastTime;
 	delta = duration.count();
-	cout << 1/delta<<endl;
 	lastTime=high_resolution_clock::now();
 	usleep(7000); //makes it min of 144fps, it was around 5k fps
 	glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer
+	float acc= 0;
+	if(Right_H){
+		acc=600;	
+	}else if (Left_H){
+		acc=-600;
+	}
+	player.ApplyAcc(Vector(acc,0));
 	player.Move();
 	DrawScene();
 	glFlush();
 }
 int main(int argc, char** argv) {
+	lastTime=high_resolution_clock::now();
 	srand (time(NULL));
 	glutInit(&argc, argv);		// Initialize GLUT
     glutInitWindowSize(800,400);   // Set the window's initial width & height
@@ -245,6 +268,7 @@ int main(int argc, char** argv) {
     glutInitWindowPosition(50, 50); // Position the window's initial top-left corner
     glutDisplayFunc(disInit); // Register display callback handler for window re-paint
 	glutSpecialFunc(keyboard);
+	glutSpecialUpFunc(keyboardUp);
 	glutIdleFunc(run);
 	glutMainLoop();
 	return 0;
