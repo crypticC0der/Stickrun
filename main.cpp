@@ -12,6 +12,14 @@
 using namespace std;
 using namespace std::chrono;
 
+class Vector;
+class Object;
+class Matrix2;
+class PhysicsObject;
+class Player; 
+template<class T>
+class CircularQueue;
+
 double delta;
 enum Color{
 	Red=4,
@@ -24,6 +32,51 @@ enum Shape{
 	RightAngle
 };
 bool Left_H,Right_H;
+
+template<class T>
+class CircularQueue{
+	private:
+		int head;
+		int tail;
+		bool full=false;
+		int len;
+		T* objects;
+	public:
+		CircularQueue(int n){
+			len=n;
+			objects = new T[n];
+		}
+		void Add(T item){
+			objects[head]=item;
+			head+=1;
+			head %=len;
+			full = ((head)%len)==tail;
+		}
+		bool IsFull(){
+			return full;
+		}
+		void Remove(){
+			//free up pointer
+			if (((head)%len)!=tail||full){
+				tail+=1;
+				tail%=len;
+				full=false;
+			}
+		}
+		bool AtEnd(int i){
+			return (tail+i)%len==head;
+		}
+		T* GetEnd(){
+			return objects+ (head-1)%len;
+		}
+		T* GetItem(int i){
+			return objects+ (tail+i)%len;
+		}
+		void Print(){
+			cout << "head: " << head << endl << "tail: " << tail << endl;
+		}
+
+};
 
 class Vector{
 	public:
@@ -71,6 +124,8 @@ class Vector{
 
 };
 
+CircularQueue<PhysicsObject> threats(15);
+
 class Matrix2{
 	public:
 		float values[4];
@@ -103,6 +158,8 @@ class Object{
 		Vector dimensions;
 		int c;
 
+		Object(){};
+		~Object(){};
 		Object(Vector p,Shape s,float ang,Vector d,int color){
 			c=color;
 			pos = p;
@@ -140,6 +197,8 @@ class PhysicsObject : public Object {
 	public:
 		float mass;
 		Vector vel;
+		PhysicsObject(): Object(){};
+		~PhysicsObject(){};
 		PhysicsObject(Vector p,Shape s, float a, Vector d,int c,float m) : Object(p,s,a,d,c){
 			mass=m;
 		}
@@ -150,13 +209,30 @@ class PhysicsObject : public Object {
 			vel+=F*delta/mass;
 		}
 		void WallCol(){
-			if(pos.x + dimensions.x/2>800 || pos.x -dimensions.x/2 <0){
-				vel.x = -vel.x/2;
+			if((pos.x + dimensions.x/2>800 && vel.x>0) || (pos.x -dimensions.x/2 <0 && vel.x <0)){
+				vel.x = 0;
 			}
-			if(pos.y -dimensions.y/2 <50){
-				vel.y = -vel.y/2;
+			if(pos.y -dimensions.y/2 <100 && vel.y <0){
+				vel.y = 0;
+				pos.y = 100+dimensions.y/2;
 			}
 		}
+		void Move(){
+		}
+		bool loop(){
+			pos.x-=150*delta;
+			if (pos.x<-100){
+				cout << "fuck" << endl;
+				threats.Remove();
+			}
+			return pos.x<-100;
+		}
+};
+
+
+class Player : public PhysicsObject {
+	public:
+		Player(Vector p,Shape s, float a, Vector d,int c,float m) : PhysicsObject(p,s,a,d,c,m){}
 		void Move(){
 			float res(400);
 			if(vel.x>0.2){
@@ -171,12 +247,15 @@ class PhysicsObject : public Object {
 			if(vel.x>300){
 				vel.x=300;
 			}
+			vel.x -= 150; //pushback as youre running forward
+			WallCol();
 			pos+=vel*delta;
+			vel.x += 150; //pushback as youre running forward
 		}
-};
-class Player : public PhysicsObject {
-	public:
-		Player(Vector p,Shape s, float a, Vector d,int c,float m) : PhysicsObject(p,s,a,d,c,m){}
+		void loop(){
+			vel.y -= delta*800;//10x gravity
+			Move();
+		}
 };
 
 void drawString(float x, float y, char *string) {
@@ -195,11 +274,15 @@ void DrawScene(){
 	glVertex2d(1,-.5);
 	glEnd();
 	player.draw();
+	int i=0;
+	while(!threats.AtEnd(i) || i==0 && threats.IsFull()){
+		(*threats.GetItem(i)).draw();
+		i+=1;
+	}
 }
 
 void disInit(){
 	glClearColor(1, 1, 1, 1); // Set background color to black and opaque
-	cout << "lol" <<endl;
 	glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer
 	DrawScene();
 	glFlush();
@@ -213,7 +296,9 @@ void keyboardUp(int key, int _x, int _y)
 			//handle
 			break;
 		case GLUT_KEY_UP:
-			//handle
+			if (player.pos.y -player.dimensions.y/2< 101){
+				player.vel.y = 400;
+			}
 			break;
 		case GLUT_KEY_LEFT:
 			Left_H=false;
@@ -247,6 +332,8 @@ void keyboard(int key, int _x, int _y)
 		}
 }
 
+float timeout=0;
+float mTimeout=0;
 high_resolution_clock::time_point lastTime;
 void run(){
 	duration<double> duration = high_resolution_clock::now() - lastTime;
@@ -256,12 +343,36 @@ void run(){
 	glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer
 	float acc= 0;
 	if(Right_H){
-		acc=600;	
+		acc=1200;	
 	}else if (Left_H){
-		acc=-600;
+		acc=-1200;
+	}
+
+	//threat generation
+	//having timeout go below 0 is intentional
+	timeout-=delta;
+	mTimeout-=delta;
+
+	if(rand()%(int)(1/delta)==0 && !threats.IsFull() && mTimeout<0 && timeout<0){
+		timeout+=2;
+		mTimeout=1;
+		//new threat
+		threats.Add(PhysicsObject((new Vector(800,100))[0],Rectangle,0,(new Vector(rand()%80+10,rand()%80 +10))[0],rand()%7,1));
+		PhysicsObject *p_val = threats.GetEnd();
+		(*p_val).pos += (*p_val).dimensions/2;
+		
+		
+		cout << "new threat" << endl;
+	}
+
+	int i=0;
+	while(!threats.AtEnd(i) || i==0 && threats.IsFull()){
+		if(!(*threats.GetItem(i)).loop()){
+			i+=1;
+		}
 	}
 	player.ApplyAcc(Vector(acc,0));
-	player.Move();
+	player.loop();
 	DrawScene();
 	glFlush();
 }
