@@ -12,6 +12,7 @@
 using namespace std;
 using namespace std::chrono;
 
+void Reset();
 class Vector;
 class Object;
 class Matrix2;
@@ -34,6 +35,7 @@ enum Shape{
 bool Left_H,fall,Right_H;
 float spdmod=1;
 float score=0;
+float hScore=0;
 
 template<class T>
 class CircularQueue{
@@ -52,7 +54,7 @@ class CircularQueue{
 			objects[head]=item;
 			head+=1;
 			head %=len;
-			full = ((head)%len)==tail;
+			full = (head)==tail;
 		}
 		bool IsFull(){
 			return full;
@@ -63,6 +65,11 @@ class CircularQueue{
 				tail+=1;
 				tail%=len;
 				full=false;
+			}
+		}
+		void Empty(){
+			while(head!=tail){
+				Remove();
 			}
 		}
 		bool AtEnd(int i){
@@ -231,7 +238,7 @@ class PhysicsObject : public Object {
 			int i=0;
 			while(!threats.AtEnd(i) || i==0 && threats.IsFull()){
 				if(CollidingWith(*threats.GetItem(i))){
-					glutLeaveMainLoop();
+					Reset();
 				}
 				i+=1;
 			}
@@ -289,8 +296,11 @@ void DrawScene(){
 
 	char buf[100]; sprintf(buf, "%d", (int)round(score));
 	glColor3f(0,0,0);
-	drawString(0,-0.8,buf);
-	drawString(-0.04,-0.7,(char*)"Score");
+	drawString(-.5,-0.8,buf);
+	drawString(-.54,-0.7,(char*)"Score");
+	sprintf(buf, "%d", (int)round(hScore));
+	drawString(0.5,-0.8,buf);
+	drawString(0.41,-0.7,(char*)"High Score");
 	glColor3f(0,0,0);
 	glBegin(GL_LINES);
 
@@ -404,6 +414,9 @@ void run(){
 	timeout-=delta*spdmod;
 	mTimeout-=delta*spdmod;
 	score+=delta*3*spdmod*spdmod;
+	if(score>hScore){
+		hScore=score;
+	}
 
 	if(rand()%(int)(1/delta)==0 && !threats.IsFull() && mTimeout<0 && timeout<0){
 		timeout+=2;
@@ -428,6 +441,21 @@ void run(){
 	DrawScene();
 	glFlush();
 }
+
+void Reset(){
+	Left_H=false;
+	Right_H=false;
+	fall=false;
+	mTimeout=0;
+	timeout=0;
+	score=0;
+	spdmod=1;
+	threats.Empty();
+	player.dimensions.x=50;player.dimensions.y=100;
+	player.pos.x=200;player.pos.y=150;
+	player.vel.x=0;player.vel.y=0;
+}
+
 int main(int argc, char** argv) {
 	lastTime=high_resolution_clock::now();
 	srand (time(NULL));
