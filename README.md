@@ -1,5 +1,5 @@
 # Stickrun
-game about a stick man running, who knows what from<br>
+game about a stick man running, who knows what from<br><br>
 controlled with up down left and right<br>
 no i will not add hjkl/wasd based controlling<br>
 dont hit the boxes, though that it obvious<br>
