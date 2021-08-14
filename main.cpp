@@ -31,7 +31,8 @@ enum Shape{
 	Rectangle,
 	RightAngle
 };
-bool Left_H,Right_H;
+bool Left_H,fall,Right_H;
+float spdmod=1;
 
 template<class T>
 class CircularQueue{
@@ -219,8 +220,23 @@ class PhysicsObject : public Object {
 		}
 		void Move(){
 		}
+		bool CollidingWith(PhysicsObject o){
+			Vector diff = pos-o.pos;
+			diff.x = abs(diff.x);
+			diff.y = abs(diff.y);
+			return (diff.y*2<dimensions.y+o.dimensions.y && diff.x*2<dimensions.x+o.dimensions.x);
+		}
+		void ObjCol(){
+			int i=0;
+			while(!threats.AtEnd(i) || i==0 && threats.IsFull()){
+				if(CollidingWith(*threats.GetItem(i))){
+					glutLeaveMainLoop();
+				}
+				i+=1;
+			}
+		}
 		bool loop(){
-			pos.x-=150*delta;
+			pos.x-=150*spdmod*delta;
 			if (pos.x<-100){
 				cout << "fuck" << endl;
 				threats.Remove();
@@ -247,12 +263,14 @@ class Player : public PhysicsObject {
 			if(vel.x>300){
 				vel.x=300;
 			}
-			vel.x -= 150; //pushback as youre running forward
 			WallCol();
 			pos+=vel*delta;
-			vel.x += 150; //pushback as youre running forward
+			if(pos.x-dimensions.x/2>0){
+				pos.x-=150*delta;
+			}
 		}
 		void loop(){
+			ObjCol();
 			vel.y -= delta*800;//10x gravity
 			Move();
 		}
@@ -293,11 +311,22 @@ void keyboardUp(int key, int _x, int _y)
 {
 	switch (key){
 		case GLUT_KEY_DOWN:
-			//handle
+			fall=false;
+			if(player.dimensions.y==50){
+				player.dimensions.y=100;
+				player.dimensions.x=50;
+				player.pos.y+=25;
+			}
 			break;
 		case GLUT_KEY_UP:
 			if (player.pos.y -player.dimensions.y/2< 101){
-				player.vel.y = 400;
+				player.vel.y = 450;
+				if(player.dimensions.y==50){
+					player.vel.y=530;
+					player.dimensions.y=100;
+					player.dimensions.x=50;
+					player.pos.y+=25;
+				}
 			}
 			break;
 		case GLUT_KEY_LEFT:
@@ -315,7 +344,13 @@ void keyboard(int key, int _x, int _y)
 {
 	switch (key){
 		case GLUT_KEY_DOWN:
-			//handle
+			if(player.pos.y-player.dimensions.y/2>101){
+				fall=true;
+			}else{
+				player.dimensions.y=50;
+				player.pos.y-=25;
+				player.dimensions.x=75;
+			}
 			break;
 		case GLUT_KEY_UP:
 			//handle
@@ -341,17 +376,28 @@ void run(){
 	lastTime=high_resolution_clock::now();
 	usleep(7000); //makes it min of 144fps, it was around 5k fps
 	glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer
-	float acc= 0;
+	Vector acc(0,0);
 	if(Right_H){
-		acc=1200;	
+		acc.x=1200;	
 	}else if (Left_H){
-		acc=-1200;
+		acc.x=-1200;
+	}
+	if(fall){
+		acc.y=-2000;
+		if(player.pos.y - player.dimensions.y/2<101){
+			fall=false;
+			player.dimensions.x=75;
+			player.dimensions.y=50;
+			player.pos.y-=25;
+			cout << "sex" << endl;
+		}
 	}
 
 	//threat generation
 	//having timeout go below 0 is intentional
-	timeout-=delta;
-	mTimeout-=delta;
+	spdmod+=delta/10;
+	timeout-=delta*spdmod;
+	mTimeout-=delta*spdmod;
 
 	if(rand()%(int)(1/delta)==0 && !threats.IsFull() && mTimeout<0 && timeout<0){
 		timeout+=2;
@@ -371,7 +417,7 @@ void run(){
 			i+=1;
 		}
 	}
-	player.ApplyAcc(Vector(acc,0));
+	player.ApplyAcc(acc);
 	player.loop();
 	DrawScene();
 	glFlush();
