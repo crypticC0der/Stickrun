@@ -280,12 +280,17 @@ class Player : public PhysicsObject {
 void drawString(float x, float y, char *string) {
 	glRasterPos2f(x,y);
 	for (char* c = string; *c != '\0'; c++) {
-		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);  // Updates the position
+		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);  // Updates the position
 	}
 }
 Player player(Vector(200,150),Rectangle,0,Vector(50,100), Red,64);
 
 void DrawScene(){
+
+	char buf[100]; sprintf(buf, "%d", (int)round(score));
+	glColor3f(0,0,0);
+	drawString(0,-0.8,buf);
+	drawString(-0.04,-0.7,(char*)"Score");
 	glColor3f(0,0,0);
 	glBegin(GL_LINES);
 
@@ -390,7 +395,6 @@ void run(){
 			player.dimensions.x=75;
 			player.dimensions.y=50;
 			player.pos.y-=25;
-			cout << "sex" << endl;
 		}
 	}
 
@@ -399,7 +403,7 @@ void run(){
 	spdmod+=delta/10;
 	timeout-=delta*spdmod;
 	mTimeout-=delta*spdmod;
-	score=delta*100*spdmod*spdmod;
+	score+=delta*3*spdmod*spdmod;
 
 	if(rand()%(int)(1/delta)==0 && !threats.IsFull() && mTimeout<0 && timeout<0){
 		timeout+=2;
