@@ -1,5 +1,6 @@
 # Stickrun
 game about a stick man running, who knows what from<br><br>
+part of my [summer of code]() project<br>
 controlled with up down left and right<br>
 no i will not add hjkl/wasd based controlling<br>
 dont hit the boxes, though that it obvious<br>
