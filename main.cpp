@@ -33,6 +33,7 @@ enum Shape{
 };
 bool Left_H,fall,Right_H;
 float spdmod=1;
+float score=0;
 
 template<class T>
 class CircularQueue{
@@ -398,6 +399,7 @@ void run(){
 	spdmod+=delta/10;
 	timeout-=delta*spdmod;
 	mTimeout-=delta*spdmod;
+	score=delta*100*spdmod*spdmod;
 
 	if(rand()%(int)(1/delta)==0 && !threats.IsFull() && mTimeout<0 && timeout<0){
 		timeout+=2;
